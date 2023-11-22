@@ -15,9 +15,8 @@ class ThumbStickHandle(
     defStyleAttr: Int,
     defStyleRes: Int,
 ) : FrameLayout(context, attrs, defStyleAttr, defStyleRes), View.OnTouchListener {
-    private var previousX = 0f
-    private var previousY = 0f
-    private var previousDistanceSquared = 0f
+    private var originX = 0f
+    private var originY = 0f
 
     lateinit var onPositionChanged: (x: Float, y: Float) -> Unit
     lateinit var onPositionReset: () -> Unit
@@ -40,8 +39,12 @@ class ThumbStickHandle(
     override fun onTouch(v: View, event: MotionEvent): Boolean {
         return when (event.action and MotionEvent.ACTION_MASK) {
             MotionEvent.ACTION_DOWN -> {
-                previousX = event.rawX
-                previousY = event.rawY
+                originX = v.x
+                originY = v.y
+                val tX = ((event.x / v.width) * 2) - 1
+                val tY = ((event.y / v.height) * 2) - 1
+                translationX = tX.toFloat() * v.width / 2
+                translationY = tY.toFloat() * v.height / 2
 
                 true
             }
@@ -56,17 +59,11 @@ class ThumbStickHandle(
                 true
             }
             MotionEvent.ACTION_MOVE -> {
-                val dx = event.rawX - previousX
-                val dy = event.rawY - previousY
-
-                var newTx = translationX + dx
-                var newTy = translationY + dy
+                var newTx = ((((event.rawX - originX) / v.width) * 2) - 1) * v.width / 2
+                var newTy = ((((event.rawY - originY) / v.height) * 2) - 1) * v.height / 2
 
                 val distanceSquared = newTx * newTx + newTy * newTy
-                val distanceSquaredDx = distanceSquared.minus(previousDistanceSquared).absoluteValue
-                if (distanceSquaredDx >= DISTANCE_THRESHOLD_SQUARED) {
-                    previousDistanceSquared = distanceSquared
-
+                if (distanceSquared >= DISTANCE_THRESHOLD_SQUARED) {
                     if (distanceSquared >= MAX_DISTANCE_SQUARED) {
                         val magnitude = sqrt(distanceSquared)
                         val utx = newTx / magnitude
@@ -84,8 +81,6 @@ class ThumbStickHandle(
                     }
                 }
 
-                previousX = event.rawX
-                previousY = event.rawY
                 translationX = newTx
                 translationY = newTy
 
